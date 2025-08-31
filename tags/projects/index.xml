@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Projects on My New Hugo Site</title>
-    <link>https://example.org/tags/projects/</link>
-    <description>Recent content in Projects on My New Hugo Site</description>
+    <title>Projects on Aaron LIU&#39;s Blog</title>
+    <link>https://aaronliu0011.github.io/tags/projects/</link>
+    <description>Recent content in Projects on Aaron LIU&#39;s Blog</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 31 Aug 2025 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://example.org/tags/projects/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://aaronliu0011.github.io/tags/projects/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Java Project: Trading System</title>
-      <link>https://example.org/posts/trading-system/</link>
+      <link>https://aaronliu0011.github.io/posts/trading-system/</link>
       <pubDate>Sun, 31 Aug 2025 00:00:00 +0000</pubDate>
-      <guid>https://example.org/posts/trading-system/</guid>
+      <guid>https://aaronliu0011.github.io/posts/trading-system/</guid>
       <description>&lt;p&gt;This is a small console-based Java application I wrote to manage a simple trading system.&lt;/p&gt;&#xA;&lt;p&gt;👉 View the GitHub repo: &lt;a href=&#34;https://github.com/aaronLiu0011/trading-system&#34;&gt;trading-system&lt;/a&gt;&lt;/p&gt;&#xA;&lt;hr&gt;</description>
     </item>
   </channel>

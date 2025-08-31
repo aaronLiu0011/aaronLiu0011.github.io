@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Tags on My New Hugo Site</title>
-    <link>https://example.org/tags/</link>
-    <description>Recent content in Tags on My New Hugo Site</description>
+    <title>Tags on Aaron LIU&#39;s Blog</title>
+    <link>https://aaronliu0011.github.io/tags/</link>
+    <description>Recent content in Tags on Aaron LIU&#39;s Blog</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sun, 31 Aug 2025 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://example.org/tags/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://aaronliu0011.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Console App</title>
-      <link>https://example.org/tags/console-app/</link>
+      <link>https://aaronliu0011.github.io/tags/console-app/</link>
       <pubDate>Sun, 31 Aug 2025 00:00:00 +0000</pubDate>
-      <guid>https://example.org/tags/console-app/</guid>
+      <guid>https://aaronliu0011.github.io/tags/console-app/</guid>
       <description></description>
     </item>
     <item>
       <title>Java</title>
-      <link>https://example.org/tags/java/</link>
+      <link>https://aaronliu0011.github.io/tags/java/</link>
       <pubDate>Sun, 31 Aug 2025 00:00:00 +0000</pubDate>
-      <guid>https://example.org/tags/java/</guid>
+      <guid>https://aaronliu0011.github.io/tags/java/</guid>
       <description></description>
     </item>
     <item>
       <title>Projects</title>
-      <link>https://example.org/tags/projects/</link>
+      <link>https://aaronliu0011.github.io/tags/projects/</link>
       <pubDate>Sun, 31 Aug 2025 00:00:00 +0000</pubDate>
-      <guid>https://example.org/tags/projects/</guid>
+      <guid>https://aaronliu0011.github.io/tags/projects/</guid>
       <description></description>
     </item>
   </channel>
