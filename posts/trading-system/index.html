@@ -8,6 +8,398 @@
     <meta name="viewport" content="width=device-width,minimum-scale=1">
     <meta name="description" content="This is a small console-based Java application I wrote to manage a simple trading system.
 👉 View the GitHub repo: trading-system
+
+Main
+package trading_system;
+
+import java.io.IOException;
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        System.out.println(&#34;株式取引管理システムを開始します。&#34;);
+        Scanner sc = new Scanner(System.in);
+
+        while(true){
+            ShowMenu();
+            String c = sc.next().toUpperCase();
+
+            switch(c) {
+                case &#34;A&#34;:
+                    System.out.println(&#34;銘柄マスタを表示します。&#34;);
+                    showStock.run();
+                    System.out.println(&#34;---&#34;);
+                    continue;
+                case &#34;B&#34;:
+                    System.out.println(&#34;新規株式銘柄マスタを登録します。&#34;);
+                    registerStock.run();
+                    System.out.println(&#34;---&#34;);
+                    continue;
+                case &#34;Q&#34;:
+                    System.out.println(&#34;アプリケーションを終了しました。&#34;);
+                    return;
+                default:
+                    System.out.printf(&#34;\&#34;%s\&#34; に対応するメニューは存在しません。%n&#34;, c);
+            }
+            System.out.println(&#34;---&#34;);
+        }
+
+    }
+
+    private static void ShowMenu() {
+        System.out.println(&#34;操作するメニューを選んでください。&#34;);
+        System.out.println(&#34;    A: 銘柄マスター一覧表示&#34;);
+        System.out.println(&#34;    B: 銘柄マスター新規登録&#34;);
+        System.out.println(&#34;    Q: アプリケーションを終了する&#34;);
+        System.out.print(&#34;入力してください：&#34;);
+    }
+}
+stock
+package trading_system;
+
+import java.util.Set;
+
+// for single stock
+public class stock {
+    private String ticker;
+    private String name;
+    private String market;
+    private long shares;
+
+    public stock() {
+    }
+
+    public stock(String ticker, String name, String market, long shares) {
+        this.ticker = ticker;
+        this.name = name;
+        this.market = market;
+        this.shares = shares;
+    }
+
+    public String getTicker() {
+        return ticker;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getMarket() {
+        return market;
+    }
+
+    public long getShares() {
+        return shares;
+    }
+
+    public void setTicker(String ticker) {
+        this.ticker = ticker;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setMarket(String market) {
+        this.market = market;
+    }
+
+    public void setShares(long shares) {
+        this.shares = shares;
+    }
+
+    public String[] toArray() {
+        return new String[]{ticker, name, market, String.valueOf(shares)};
+    }
+
+    // Ticker rules:
+    //   1. 4 chars
+    //   2. 1st and 3rd are digital
+    //   3. 2nd and 4th are digital or allowed char
+    public static final Set&lt;Character&gt; allowed_char = Set.of(&#39;A&#39;,&#39;C&#39;,&#39;D&#39;,&#39;F&#39;,&#39;G&#39;,&#39;H&#39;,&#39;J&#39;,&#39;K&#39;,&#39;L&#39;,&#39;M&#39;,&#39;N&#39;,&#39;P&#39;,&#39;R&#39;,&#39;S&#39;,&#39;T&#39;,&#39;U&#39;,&#39;W&#39;,&#39;X&#39;,&#39;Y&#39;);
+    public static boolean isValidTicker(String ticker) {
+        if (ticker.length() != 4) return false;
+        if (!Character.isDigit(ticker.charAt(0))) return false;
+        if (!Character.isDigit(ticker.charAt(2))) return false;
+        if (!allowed_char.contains(ticker.charAt(1)) &amp;&amp; !Character.isDigit(ticker.charAt(1))) return false;
+        if (!allowed_char.contains(ticker.charAt(3)) &amp;&amp; !Character.isDigit(ticker.charAt(3))) return false;
+        return true;
+    }
+
+    // Name rules:
+    public static boolean isValidName(String name){
+        String trimmed = name.trim().replaceAll(&#34;^[\u3000\t]&#43;|[\u3000\t]&#43;$&#34;, &#34;&#34;);
+        if (trimmed.isEmpty()) return false;
+        return trimmed.matches(&#34;[a-zA-Z0-9 .()]&#43;&#34;);
+    }
+
+    // Market rules:
+    public static final Set&lt;String&gt; allowed_market = Set.of(&#34;プライム&#34;, &#34;スタンダード&#34;, &#34;グロース&#34;, &#34;Prime&#34;, &#34;Standard&#34;, &#34;Growth&#34;, &#34;P&#34;, &#34;S&#34;, &#34;G&#34;);
+    public static boolean isValidMarket(String market){
+        market = market.substring(0, 1).toUpperCase() &#43; market.substring(1);
+        return (allowed_market.contains(market));
+    }
+
+    // Shares rule:
+    public static boolean isValidShares(long shares){
+        return shares &gt;= 0 &amp;&amp; shares &lt;= 999_999_999_999L;
+    }
+}
+stockManager
+package trading_system;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+// to manage stock list
+public class stockManager {
+    private final List&lt;stock&gt; stockList = new ArrayList&lt;&gt;();
+
+    public void loadFromCSV(String csvPath) throws IOException {
+        stockList.clear();
+
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(csvPath))) {
+            reader.readLine();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(&#34;,&#34;);
+                if (parts.length &lt; 4) continue;
+                stockList.add(
+                        new stock(parts[0], parts[1], parts[2], Long.parseLong(parts[3]))
+                );
+            }
+
+        }
+    }
+
+    public void saveToCSV(String csvPath) throws IOException {
+        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvPath))) {
+            writer.write(&#34;ticker,product_name,market,shares_issued\n&#34;);
+            for (stock s : stockList) {
+                writer.write(String.join(&#34;,&#34;, s.toArray()));
+                writer.write(&#34;\n&#34;);
+            }
+        }
+    }
+
+    public void addStock(stock stock) {
+        for (stock s : stockList) {
+            if (s.getTicker().equals(stock.getTicker())) {
+                System.err.println(stock.getTicker() &#43; &#34; already exists&#34;);
+                return;
+            }
+        }
+        stockList.add(stock);
+    }
+
+    public List&lt;stock&gt; getStockList() {
+        return stockList;
+    }
+}
+showStock
+package trading_system;
+
+import java.io.*;
+import java.util.*;
+
+public class showStock {
+    public static void run() throws IOException {
+        stockManager manager = new stockManager();
+        manager.loadFromCSV(&#34;data/company_list.csv&#34;);
+        List&lt;stock&gt; stockList = manager.getStockList();
+        String[] header = {&#34;Ticker&#34;, &#34;Product Name&#34;, &#34;Market&#34;, &#34;Shares Issued&#34;};
+
+        //
+        int columnsCount = header.length;
+        int[] columnWidths = new int[columnsCount];
+
+        // formate stock list
+        for (stock stock : stockList) {
+            stock.setName(truncation(stock.getName(),28));
+            stock.setMarket(marketType(stock.getMarket()));
+        }
+
+        // calculate the max length of each column
+        for (int i = 0; i &lt; columnsCount; i&#43;&#43;) {
+            columnWidths[i] = header[i].length();
+        }
+
+        for (stock stock : stockList) {
+            columnWidths[0] = Math.max(stock.getTicker().length(), columnWidths[0]);
+            columnWidths[1] = Math.max(stock.getName().length(), columnWidths[1]);
+            columnWidths[2] = Math.max(stock.getMarket().length(), columnWidths[2]);
+            columnWidths[3] = Math.max(String.format(&#34;%,d&#34;, stock.getShares()).length(), columnWidths[3]);
+        }
+
+        int colWidthSum = 0;
+        for (int i = 0; i &lt; columnsCount; i&#43;&#43;) {
+            colWidthSum &#43;= columnWidths[i];
+        }
+
+        // print
+        System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;));
+        System.out.println(formattedHeader(header, columnWidths));
+        System.out.println(headerDivider(columnWidths, &#34;-&#34;));
+        for (stock stock : stockList) {
+            System.out.println(formattedRow(stock, columnWidths));
+        }
+        System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;));
+
+    }
+
+    public static void main(String[] args) throws IOException {
+        run();
+    }
+
+    // ===============================================================
+    // market type
+    public static String marketType(String arg) {
+        arg = arg.substring(0, 1).toUpperCase() &#43; arg.substring(1);
+        switch (arg) {
+            case &#34;P&#34;: return &#34;Prime&#34;;
+            case &#34;S&#34;: return &#34;Standard&#34;;
+            case &#34;G&#34;: return &#34;Growth&#34;;
+            default: return arg;
+        }
+    }
+
+    // Truncation
+    public static String truncation(String arg, int maxWidth) {
+        if (arg.length() &lt;= maxWidth) return arg;
+        return arg.substring(0, maxWidth-1).trim() &#43; &#34;...&#34;;
+    }
+
+    // format each row
+    public static String formattedHeader (String[] header, int[] columnWidths) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(&#34;|&#34;);
+        for (int i = 0; i &lt; header.length; i&#43;&#43;) {
+            sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[i] &#43; &#34;s&#34;, header[i])).append(&#34; |&#34;);
+        }
+        return sb.toString();
+    }
+
+    public static String formattedRow (stock s, int[] columnWidths) {
+        StringBuilder sb = new StringBuilder();
+        // first col
+        sb.append(&#34;|&#34;);
+        sb.append(&#34;  &#34;).append(s.getTicker()).append(&#34;  |&#34;);
+        //middle col
+        sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[1] &#43; &#34;s&#34;, truncation(s.getName(),28))).append(&#34; |&#34;);
+        sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[2] &#43; &#34;s&#34;, s.getMarket())).append(&#34; |&#34;);
+        //last col
+        sb.append(&#34; &#34;).append(String.format(&#34;%&#34; &#43; columnWidths[3] &#43; &#34;s&#34;, String.format(&#34;%,d&#34;, s.getShares()))).append(&#34; |&#34;);
+        return sb.toString();
+    }
+
+    // seperator
+    public static String divider (int columnsCount, int colWidthSum, String separator) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(&#34;|&#34;);
+        for (int i = 0; i &lt; colWidthSum &#43; (columnsCount*3-1); i&#43;&#43;) {
+            sb.append(separator);
+        }
+        sb.append(&#34;|&#34;);
+        return sb.toString();
+    }
+
+    public static String headerDivider (int[] columnWidths, String separator) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(&#34;|&#34;);
+        sb.append(separator.repeat(columnWidths[0]&#43;2));
+        sb.append(&#34;&#43;&#34;);
+        for (int i = 1; i &lt; columnWidths.length-1; i&#43;&#43;) {
+            sb.append(separator.repeat(columnWidths[i]&#43;2));
+            sb.append(&#34;&#43;&#34;);
+        }
+        sb.append(separator.repeat(columnWidths[columnWidths.length-1]&#43;2));
+        sb.append(&#34;|&#34;);
+        return sb.toString();
+    }
+
+}
+registerStock
+package trading_system;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Scanner;
+
+public class registerStock {
+    public static void run() throws IOException {
+        stockManager manager = new stockManager();
+        manager.loadFromCSV(&#34;data/company_list.csv&#34;);
+
+        stock newStock = promptNewStock(manager.getStockList());
+        manager.addStock(newStock);
+
+        manager.saveToCSV(&#34;data/company_list.csv&#34;);
+    }
+
+    public static void main(String[] args) throws IOException {
+        run();
+    }
+
+    public static stock promptNewStock(List&lt;stock&gt; existingStocks) throws IOException {
+        Scanner sc = new Scanner(System.in);
+
+        String name = null;
+        String ticker = null;
+        String market = null;
+        long shares = 0;
+
+        // 銘柄コード
+        while (true) {
+            System.out.print(&#34;銘柄コード&gt; &#34;);
+            ticker = sc.nextLine().toUpperCase();
+
+            boolean isDuplicate = false;
+            for (stock s : existingStocks) {
+                if (s.getTicker().equals(ticker)) {
+                    System.out.println(&#34;この銘柄は既に登録されています。&#34;);
+                    isDuplicate = true;
+                    break;
+                }
+            }
+            if (isDuplicate) continue; // jump to the beginning of while
+            if (stock.isValidTicker(ticker)) break; // stop looping
+            else System.out.println(&#34;銘柄コードが規則に従っていません。&#34;);
+        }
+
+        // 銘柄名
+        while (true) {
+            System.out.print(&#34;銘柄名&gt; &#34;);
+            name = sc.nextLine().trim();
+            if (stock.isValidName(name)) break;
+            else System.out.println(&#34;銘柄名が規則に従っていません。&#34;);
+        }
+
+        // 上場市場
+        while (true) {
+            System.out.print(&#34;上場市場&gt; &#34;);
+            market = sc.next();
+            if (stock.isValidMarket(market)) break;
+            else System.out.println(&#34;上場市場が規則に従っていません。&#34;);
+        }
+
+        // 発行済み株式数
+        while (true) {
+            System.out.print(&#34;発行済み株式数&gt; &#34;);
+            shares = sc.nextLong();
+            if (stock.isValidShares(shares)) break;
+            else System.out.println(&#34;株式数が規則に従っていません。&#34;);
+        }
+
+        System.out.println(name &#43; &#34; を新規銘柄として登録しました。&#34;);
+        return new stock(ticker, name, market, shares);
+    }
+}
 ">
     <meta name="generator" content="Hugo 0.149.0">
     
@@ -42,7 +434,8 @@
   <meta property="og:site_name" content="Aaron LIU&#39;s Blog">
   <meta property="og:title" content="Java Project: Trading System">
   <meta property="og:description" content="This is a small console-based Java application I wrote to manage a simple trading system.
-👉 View the GitHub repo: trading-system">
+👉 View the GitHub repo: trading-system
+Main package trading_system; import java.io.IOException; import java.util.Scanner; public class Main { public static void main(String[] args) throws IOException { System.out.println(&#34;株式取引管理システムを開始します。&#34;); Scanner sc = new Scanner(System.in); while(true){ ShowMenu(); String c = sc.next().toUpperCase(); switch(c) { case &#34;A&#34;: System.out.println(&#34;銘柄マスタを表示します。&#34;); showStock.run(); System.out.println(&#34;---&#34;); continue; case &#34;B&#34;: System.out.println(&#34;新規株式銘柄マスタを登録します。&#34;); registerStock.run(); System.out.println(&#34;---&#34;); continue; case &#34;Q&#34;: System.out.println(&#34;アプリケーションを終了しました。&#34;); return; default: System.out.printf(&#34;\&#34;%s\&#34; に対応するメニューは存在しません。%n&#34;, c); } System.out.println(&#34;---&#34;); } } private static void ShowMenu() { System.out.println(&#34;操作するメニューを選んでください。&#34;); System.out.println(&#34; A: 銘柄マスター一覧表示&#34;); System.out.println(&#34; B: 銘柄マスター新規登録&#34;); System.out.println(&#34; Q: アプリケーションを終了する&#34;); System.out.print(&#34;入力してください：&#34;); } } stock package trading_system; import java.util.Set; // for single stock public class stock { private String ticker; private String name; private String market; private long shares; public stock() { } public stock(String ticker, String name, String market, long shares) { this.ticker = ticker; this.name = name; this.market = market; this.shares = shares; } public String getTicker() { return ticker; } public String getName() { return name; } public String getMarket() { return market; } public long getShares() { return shares; } public void setTicker(String ticker) { this.ticker = ticker; } public void setName(String name) { this.name = name; } public void setMarket(String market) { this.market = market; } public void setShares(long shares) { this.shares = shares; } public String[] toArray() { return new String[]{ticker, name, market, String.valueOf(shares)}; } // Ticker rules: // 1. 4 chars // 2. 1st and 3rd are digital // 3. 2nd and 4th are digital or allowed char public static final Set&lt;Character&gt; allowed_char = Set.of(&#39;A&#39;,&#39;C&#39;,&#39;D&#39;,&#39;F&#39;,&#39;G&#39;,&#39;H&#39;,&#39;J&#39;,&#39;K&#39;,&#39;L&#39;,&#39;M&#39;,&#39;N&#39;,&#39;P&#39;,&#39;R&#39;,&#39;S&#39;,&#39;T&#39;,&#39;U&#39;,&#39;W&#39;,&#39;X&#39;,&#39;Y&#39;); public static boolean isValidTicker(String ticker) { if (ticker.length() != 4) return false; if (!Character.isDigit(ticker.charAt(0))) return false; if (!Character.isDigit(ticker.charAt(2))) return false; if (!allowed_char.contains(ticker.charAt(1)) &amp;&amp; !Character.isDigit(ticker.charAt(1))) return false; if (!allowed_char.contains(ticker.charAt(3)) &amp;&amp; !Character.isDigit(ticker.charAt(3))) return false; return true; } // Name rules: public static boolean isValidName(String name){ String trimmed = name.trim().replaceAll(&#34;^[\u3000\t]&#43;|[\u3000\t]&#43;$&#34;, &#34;&#34;); if (trimmed.isEmpty()) return false; return trimmed.matches(&#34;[a-zA-Z0-9 .()]&#43;&#34;); } // Market rules: public static final Set&lt;String&gt; allowed_market = Set.of(&#34;プライム&#34;, &#34;スタンダード&#34;, &#34;グロース&#34;, &#34;Prime&#34;, &#34;Standard&#34;, &#34;Growth&#34;, &#34;P&#34;, &#34;S&#34;, &#34;G&#34;); public static boolean isValidMarket(String market){ market = market.substring(0, 1).toUpperCase() &#43; market.substring(1); return (allowed_market.contains(market)); } // Shares rule: public static boolean isValidShares(long shares){ return shares &gt;= 0 &amp;&amp; shares &lt;= 999_999_999_999L; } } stockManager package trading_system; import java.io.BufferedReader; import java.io.BufferedWriter; import java.io.IOException; import java.nio.file.Files; import java.nio.file.Path; import java.nio.file.Paths; import java.util.ArrayList; import java.util.List; // to manage stock list public class stockManager { private final List&lt;stock&gt; stockList = new ArrayList&lt;&gt;(); public void loadFromCSV(String csvPath) throws IOException { stockList.clear(); try (BufferedReader reader = Files.newBufferedReader(Paths.get(csvPath))) { reader.readLine(); String line; while ((line = reader.readLine()) != null) { String[] parts = line.split(&#34;,&#34;); if (parts.length &lt; 4) continue; stockList.add( new stock(parts[0], parts[1], parts[2], Long.parseLong(parts[3])) ); } } } public void saveToCSV(String csvPath) throws IOException { try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvPath))) { writer.write(&#34;ticker,product_name,market,shares_issued\n&#34;); for (stock s : stockList) { writer.write(String.join(&#34;,&#34;, s.toArray())); writer.write(&#34;\n&#34;); } } } public void addStock(stock stock) { for (stock s : stockList) { if (s.getTicker().equals(stock.getTicker())) { System.err.println(stock.getTicker() &#43; &#34; already exists&#34;); return; } } stockList.add(stock); } public List&lt;stock&gt; getStockList() { return stockList; } } showStock package trading_system; import java.io.*; import java.util.*; public class showStock { public static void run() throws IOException { stockManager manager = new stockManager(); manager.loadFromCSV(&#34;data/company_list.csv&#34;); List&lt;stock&gt; stockList = manager.getStockList(); String[] header = {&#34;Ticker&#34;, &#34;Product Name&#34;, &#34;Market&#34;, &#34;Shares Issued&#34;}; // int columnsCount = header.length; int[] columnWidths = new int[columnsCount]; // formate stock list for (stock stock : stockList) { stock.setName(truncation(stock.getName(),28)); stock.setMarket(marketType(stock.getMarket())); } // calculate the max length of each column for (int i = 0; i &lt; columnsCount; i&#43;&#43;) { columnWidths[i] = header[i].length(); } for (stock stock : stockList) { columnWidths[0] = Math.max(stock.getTicker().length(), columnWidths[0]); columnWidths[1] = Math.max(stock.getName().length(), columnWidths[1]); columnWidths[2] = Math.max(stock.getMarket().length(), columnWidths[2]); columnWidths[3] = Math.max(String.format(&#34;%,d&#34;, stock.getShares()).length(), columnWidths[3]); } int colWidthSum = 0; for (int i = 0; i &lt; columnsCount; i&#43;&#43;) { colWidthSum &#43;= columnWidths[i]; } // print System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;)); System.out.println(formattedHeader(header, columnWidths)); System.out.println(headerDivider(columnWidths, &#34;-&#34;)); for (stock stock : stockList) { System.out.println(formattedRow(stock, columnWidths)); } System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;)); } public static void main(String[] args) throws IOException { run(); } // =============================================================== // market type public static String marketType(String arg) { arg = arg.substring(0, 1).toUpperCase() &#43; arg.substring(1); switch (arg) { case &#34;P&#34;: return &#34;Prime&#34;; case &#34;S&#34;: return &#34;Standard&#34;; case &#34;G&#34;: return &#34;Growth&#34;; default: return arg; } } // Truncation public static String truncation(String arg, int maxWidth) { if (arg.length() &lt;= maxWidth) return arg; return arg.substring(0, maxWidth-1).trim() &#43; &#34;...&#34;; } // format each row public static String formattedHeader (String[] header, int[] columnWidths) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); for (int i = 0; i &lt; header.length; i&#43;&#43;) { sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[i] &#43; &#34;s&#34;, header[i])).append(&#34; |&#34;); } return sb.toString(); } public static String formattedRow (stock s, int[] columnWidths) { StringBuilder sb = new StringBuilder(); // first col sb.append(&#34;|&#34;); sb.append(&#34; &#34;).append(s.getTicker()).append(&#34; |&#34;); //middle col sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[1] &#43; &#34;s&#34;, truncation(s.getName(),28))).append(&#34; |&#34;); sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[2] &#43; &#34;s&#34;, s.getMarket())).append(&#34; |&#34;); //last col sb.append(&#34; &#34;).append(String.format(&#34;%&#34; &#43; columnWidths[3] &#43; &#34;s&#34;, String.format(&#34;%,d&#34;, s.getShares()))).append(&#34; |&#34;); return sb.toString(); } // seperator public static String divider (int columnsCount, int colWidthSum, String separator) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); for (int i = 0; i &lt; colWidthSum &#43; (columnsCount*3-1); i&#43;&#43;) { sb.append(separator); } sb.append(&#34;|&#34;); return sb.toString(); } public static String headerDivider (int[] columnWidths, String separator) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); sb.append(separator.repeat(columnWidths[0]&#43;2)); sb.append(&#34;&#43;&#34;); for (int i = 1; i &lt; columnWidths.length-1; i&#43;&#43;) { sb.append(separator.repeat(columnWidths[i]&#43;2)); sb.append(&#34;&#43;&#34;); } sb.append(separator.repeat(columnWidths[columnWidths.length-1]&#43;2)); sb.append(&#34;|&#34;); return sb.toString(); } } registerStock package trading_system; import java.io.IOException; import java.util.List; import java.util.Scanner; public class registerStock { public static void run() throws IOException { stockManager manager = new stockManager(); manager.loadFromCSV(&#34;data/company_list.csv&#34;); stock newStock = promptNewStock(manager.getStockList()); manager.addStock(newStock); manager.saveToCSV(&#34;data/company_list.csv&#34;); } public static void main(String[] args) throws IOException { run(); } public static stock promptNewStock(List&lt;stock&gt; existingStocks) throws IOException { Scanner sc = new Scanner(System.in); String name = null; String ticker = null; String market = null; long shares = 0; // 銘柄コード while (true) { System.out.print(&#34;銘柄コード&gt; &#34;); ticker = sc.nextLine().toUpperCase(); boolean isDuplicate = false; for (stock s : existingStocks) { if (s.getTicker().equals(ticker)) { System.out.println(&#34;この銘柄は既に登録されています。&#34;); isDuplicate = true; break; } } if (isDuplicate) continue; // jump to the beginning of while if (stock.isValidTicker(ticker)) break; // stop looping else System.out.println(&#34;銘柄コードが規則に従っていません。&#34;); } // 銘柄名 while (true) { System.out.print(&#34;銘柄名&gt; &#34;); name = sc.nextLine().trim(); if (stock.isValidName(name)) break; else System.out.println(&#34;銘柄名が規則に従っていません。&#34;); } // 上場市場 while (true) { System.out.print(&#34;上場市場&gt; &#34;); market = sc.next(); if (stock.isValidMarket(market)) break; else System.out.println(&#34;上場市場が規則に従っていません。&#34;); } // 発行済み株式数 while (true) { System.out.print(&#34;発行済み株式数&gt; &#34;); shares = sc.nextLong(); if (stock.isValidShares(shares)) break; else System.out.println(&#34;株式数が規則に従っていません。&#34;); } System.out.println(name &#43; &#34; を新規銘柄として登録しました。&#34;); return new stock(ticker, name, market, shares); } }">
   <meta property="og:locale" content="en_us">
   <meta property="og:type" content="article">
     <meta property="article:section" content="posts">
@@ -54,15 +447,17 @@
 
   <meta itemprop="name" content="Java Project: Trading System">
   <meta itemprop="description" content="This is a small console-based Java application I wrote to manage a simple trading system.
-👉 View the GitHub repo: trading-system">
+👉 View the GitHub repo: trading-system
+Main package trading_system; import java.io.IOException; import java.util.Scanner; public class Main { public static void main(String[] args) throws IOException { System.out.println(&#34;株式取引管理システムを開始します。&#34;); Scanner sc = new Scanner(System.in); while(true){ ShowMenu(); String c = sc.next().toUpperCase(); switch(c) { case &#34;A&#34;: System.out.println(&#34;銘柄マスタを表示します。&#34;); showStock.run(); System.out.println(&#34;---&#34;); continue; case &#34;B&#34;: System.out.println(&#34;新規株式銘柄マスタを登録します。&#34;); registerStock.run(); System.out.println(&#34;---&#34;); continue; case &#34;Q&#34;: System.out.println(&#34;アプリケーションを終了しました。&#34;); return; default: System.out.printf(&#34;\&#34;%s\&#34; に対応するメニューは存在しません。%n&#34;, c); } System.out.println(&#34;---&#34;); } } private static void ShowMenu() { System.out.println(&#34;操作するメニューを選んでください。&#34;); System.out.println(&#34; A: 銘柄マスター一覧表示&#34;); System.out.println(&#34; B: 銘柄マスター新規登録&#34;); System.out.println(&#34; Q: アプリケーションを終了する&#34;); System.out.print(&#34;入力してください：&#34;); } } stock package trading_system; import java.util.Set; // for single stock public class stock { private String ticker; private String name; private String market; private long shares; public stock() { } public stock(String ticker, String name, String market, long shares) { this.ticker = ticker; this.name = name; this.market = market; this.shares = shares; } public String getTicker() { return ticker; } public String getName() { return name; } public String getMarket() { return market; } public long getShares() { return shares; } public void setTicker(String ticker) { this.ticker = ticker; } public void setName(String name) { this.name = name; } public void setMarket(String market) { this.market = market; } public void setShares(long shares) { this.shares = shares; } public String[] toArray() { return new String[]{ticker, name, market, String.valueOf(shares)}; } // Ticker rules: // 1. 4 chars // 2. 1st and 3rd are digital // 3. 2nd and 4th are digital or allowed char public static final Set&lt;Character&gt; allowed_char = Set.of(&#39;A&#39;,&#39;C&#39;,&#39;D&#39;,&#39;F&#39;,&#39;G&#39;,&#39;H&#39;,&#39;J&#39;,&#39;K&#39;,&#39;L&#39;,&#39;M&#39;,&#39;N&#39;,&#39;P&#39;,&#39;R&#39;,&#39;S&#39;,&#39;T&#39;,&#39;U&#39;,&#39;W&#39;,&#39;X&#39;,&#39;Y&#39;); public static boolean isValidTicker(String ticker) { if (ticker.length() != 4) return false; if (!Character.isDigit(ticker.charAt(0))) return false; if (!Character.isDigit(ticker.charAt(2))) return false; if (!allowed_char.contains(ticker.charAt(1)) &amp;&amp; !Character.isDigit(ticker.charAt(1))) return false; if (!allowed_char.contains(ticker.charAt(3)) &amp;&amp; !Character.isDigit(ticker.charAt(3))) return false; return true; } // Name rules: public static boolean isValidName(String name){ String trimmed = name.trim().replaceAll(&#34;^[\u3000\t]&#43;|[\u3000\t]&#43;$&#34;, &#34;&#34;); if (trimmed.isEmpty()) return false; return trimmed.matches(&#34;[a-zA-Z0-9 .()]&#43;&#34;); } // Market rules: public static final Set&lt;String&gt; allowed_market = Set.of(&#34;プライム&#34;, &#34;スタンダード&#34;, &#34;グロース&#34;, &#34;Prime&#34;, &#34;Standard&#34;, &#34;Growth&#34;, &#34;P&#34;, &#34;S&#34;, &#34;G&#34;); public static boolean isValidMarket(String market){ market = market.substring(0, 1).toUpperCase() &#43; market.substring(1); return (allowed_market.contains(market)); } // Shares rule: public static boolean isValidShares(long shares){ return shares &gt;= 0 &amp;&amp; shares &lt;= 999_999_999_999L; } } stockManager package trading_system; import java.io.BufferedReader; import java.io.BufferedWriter; import java.io.IOException; import java.nio.file.Files; import java.nio.file.Path; import java.nio.file.Paths; import java.util.ArrayList; import java.util.List; // to manage stock list public class stockManager { private final List&lt;stock&gt; stockList = new ArrayList&lt;&gt;(); public void loadFromCSV(String csvPath) throws IOException { stockList.clear(); try (BufferedReader reader = Files.newBufferedReader(Paths.get(csvPath))) { reader.readLine(); String line; while ((line = reader.readLine()) != null) { String[] parts = line.split(&#34;,&#34;); if (parts.length &lt; 4) continue; stockList.add( new stock(parts[0], parts[1], parts[2], Long.parseLong(parts[3])) ); } } } public void saveToCSV(String csvPath) throws IOException { try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvPath))) { writer.write(&#34;ticker,product_name,market,shares_issued\n&#34;); for (stock s : stockList) { writer.write(String.join(&#34;,&#34;, s.toArray())); writer.write(&#34;\n&#34;); } } } public void addStock(stock stock) { for (stock s : stockList) { if (s.getTicker().equals(stock.getTicker())) { System.err.println(stock.getTicker() &#43; &#34; already exists&#34;); return; } } stockList.add(stock); } public List&lt;stock&gt; getStockList() { return stockList; } } showStock package trading_system; import java.io.*; import java.util.*; public class showStock { public static void run() throws IOException { stockManager manager = new stockManager(); manager.loadFromCSV(&#34;data/company_list.csv&#34;); List&lt;stock&gt; stockList = manager.getStockList(); String[] header = {&#34;Ticker&#34;, &#34;Product Name&#34;, &#34;Market&#34;, &#34;Shares Issued&#34;}; // int columnsCount = header.length; int[] columnWidths = new int[columnsCount]; // formate stock list for (stock stock : stockList) { stock.setName(truncation(stock.getName(),28)); stock.setMarket(marketType(stock.getMarket())); } // calculate the max length of each column for (int i = 0; i &lt; columnsCount; i&#43;&#43;) { columnWidths[i] = header[i].length(); } for (stock stock : stockList) { columnWidths[0] = Math.max(stock.getTicker().length(), columnWidths[0]); columnWidths[1] = Math.max(stock.getName().length(), columnWidths[1]); columnWidths[2] = Math.max(stock.getMarket().length(), columnWidths[2]); columnWidths[3] = Math.max(String.format(&#34;%,d&#34;, stock.getShares()).length(), columnWidths[3]); } int colWidthSum = 0; for (int i = 0; i &lt; columnsCount; i&#43;&#43;) { colWidthSum &#43;= columnWidths[i]; } // print System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;)); System.out.println(formattedHeader(header, columnWidths)); System.out.println(headerDivider(columnWidths, &#34;-&#34;)); for (stock stock : stockList) { System.out.println(formattedRow(stock, columnWidths)); } System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;)); } public static void main(String[] args) throws IOException { run(); } // =============================================================== // market type public static String marketType(String arg) { arg = arg.substring(0, 1).toUpperCase() &#43; arg.substring(1); switch (arg) { case &#34;P&#34;: return &#34;Prime&#34;; case &#34;S&#34;: return &#34;Standard&#34;; case &#34;G&#34;: return &#34;Growth&#34;; default: return arg; } } // Truncation public static String truncation(String arg, int maxWidth) { if (arg.length() &lt;= maxWidth) return arg; return arg.substring(0, maxWidth-1).trim() &#43; &#34;...&#34;; } // format each row public static String formattedHeader (String[] header, int[] columnWidths) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); for (int i = 0; i &lt; header.length; i&#43;&#43;) { sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[i] &#43; &#34;s&#34;, header[i])).append(&#34; |&#34;); } return sb.toString(); } public static String formattedRow (stock s, int[] columnWidths) { StringBuilder sb = new StringBuilder(); // first col sb.append(&#34;|&#34;); sb.append(&#34; &#34;).append(s.getTicker()).append(&#34; |&#34;); //middle col sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[1] &#43; &#34;s&#34;, truncation(s.getName(),28))).append(&#34; |&#34;); sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[2] &#43; &#34;s&#34;, s.getMarket())).append(&#34; |&#34;); //last col sb.append(&#34; &#34;).append(String.format(&#34;%&#34; &#43; columnWidths[3] &#43; &#34;s&#34;, String.format(&#34;%,d&#34;, s.getShares()))).append(&#34; |&#34;); return sb.toString(); } // seperator public static String divider (int columnsCount, int colWidthSum, String separator) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); for (int i = 0; i &lt; colWidthSum &#43; (columnsCount*3-1); i&#43;&#43;) { sb.append(separator); } sb.append(&#34;|&#34;); return sb.toString(); } public static String headerDivider (int[] columnWidths, String separator) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); sb.append(separator.repeat(columnWidths[0]&#43;2)); sb.append(&#34;&#43;&#34;); for (int i = 1; i &lt; columnWidths.length-1; i&#43;&#43;) { sb.append(separator.repeat(columnWidths[i]&#43;2)); sb.append(&#34;&#43;&#34;); } sb.append(separator.repeat(columnWidths[columnWidths.length-1]&#43;2)); sb.append(&#34;|&#34;); return sb.toString(); } } registerStock package trading_system; import java.io.IOException; import java.util.List; import java.util.Scanner; public class registerStock { public static void run() throws IOException { stockManager manager = new stockManager(); manager.loadFromCSV(&#34;data/company_list.csv&#34;); stock newStock = promptNewStock(manager.getStockList()); manager.addStock(newStock); manager.saveToCSV(&#34;data/company_list.csv&#34;); } public static void main(String[] args) throws IOException { run(); } public static stock promptNewStock(List&lt;stock&gt; existingStocks) throws IOException { Scanner sc = new Scanner(System.in); String name = null; String ticker = null; String market = null; long shares = 0; // 銘柄コード while (true) { System.out.print(&#34;銘柄コード&gt; &#34;); ticker = sc.nextLine().toUpperCase(); boolean isDuplicate = false; for (stock s : existingStocks) { if (s.getTicker().equals(ticker)) { System.out.println(&#34;この銘柄は既に登録されています。&#34;); isDuplicate = true; break; } } if (isDuplicate) continue; // jump to the beginning of while if (stock.isValidTicker(ticker)) break; // stop looping else System.out.println(&#34;銘柄コードが規則に従っていません。&#34;); } // 銘柄名 while (true) { System.out.print(&#34;銘柄名&gt; &#34;); name = sc.nextLine().trim(); if (stock.isValidName(name)) break; else System.out.println(&#34;銘柄名が規則に従っていません。&#34;); } // 上場市場 while (true) { System.out.print(&#34;上場市場&gt; &#34;); market = sc.next(); if (stock.isValidMarket(market)) break; else System.out.println(&#34;上場市場が規則に従っていません。&#34;); } // 発行済み株式数 while (true) { System.out.print(&#34;発行済み株式数&gt; &#34;); shares = sc.nextLong(); if (stock.isValidShares(shares)) break; else System.out.println(&#34;株式数が規則に従っていません。&#34;); } System.out.println(name &#43; &#34; を新規銘柄として登録しました。&#34;); return new stock(ticker, name, market, shares); } }">
   <meta itemprop="datePublished" content="2025-08-31T00:00:00+00:00">
   <meta itemprop="dateModified" content="2025-08-31T00:00:00+00:00">
-  <meta itemprop="wordCount" content="21">
+  <meta itemprop="wordCount" content="1059">
   <meta itemprop="keywords" content="Java,Projects,Console App">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Java Project: Trading System">
   <meta name="twitter:description" content="This is a small console-based Java application I wrote to manage a simple trading system.
-👉 View the GitHub repo: trading-system">
+👉 View the GitHub repo: trading-system
+Main package trading_system; import java.io.IOException; import java.util.Scanner; public class Main { public static void main(String[] args) throws IOException { System.out.println(&#34;株式取引管理システムを開始します。&#34;); Scanner sc = new Scanner(System.in); while(true){ ShowMenu(); String c = sc.next().toUpperCase(); switch(c) { case &#34;A&#34;: System.out.println(&#34;銘柄マスタを表示します。&#34;); showStock.run(); System.out.println(&#34;---&#34;); continue; case &#34;B&#34;: System.out.println(&#34;新規株式銘柄マスタを登録します。&#34;); registerStock.run(); System.out.println(&#34;---&#34;); continue; case &#34;Q&#34;: System.out.println(&#34;アプリケーションを終了しました。&#34;); return; default: System.out.printf(&#34;\&#34;%s\&#34; に対応するメニューは存在しません。%n&#34;, c); } System.out.println(&#34;---&#34;); } } private static void ShowMenu() { System.out.println(&#34;操作するメニューを選んでください。&#34;); System.out.println(&#34; A: 銘柄マスター一覧表示&#34;); System.out.println(&#34; B: 銘柄マスター新規登録&#34;); System.out.println(&#34; Q: アプリケーションを終了する&#34;); System.out.print(&#34;入力してください：&#34;); } } stock package trading_system; import java.util.Set; // for single stock public class stock { private String ticker; private String name; private String market; private long shares; public stock() { } public stock(String ticker, String name, String market, long shares) { this.ticker = ticker; this.name = name; this.market = market; this.shares = shares; } public String getTicker() { return ticker; } public String getName() { return name; } public String getMarket() { return market; } public long getShares() { return shares; } public void setTicker(String ticker) { this.ticker = ticker; } public void setName(String name) { this.name = name; } public void setMarket(String market) { this.market = market; } public void setShares(long shares) { this.shares = shares; } public String[] toArray() { return new String[]{ticker, name, market, String.valueOf(shares)}; } // Ticker rules: // 1. 4 chars // 2. 1st and 3rd are digital // 3. 2nd and 4th are digital or allowed char public static final Set&lt;Character&gt; allowed_char = Set.of(&#39;A&#39;,&#39;C&#39;,&#39;D&#39;,&#39;F&#39;,&#39;G&#39;,&#39;H&#39;,&#39;J&#39;,&#39;K&#39;,&#39;L&#39;,&#39;M&#39;,&#39;N&#39;,&#39;P&#39;,&#39;R&#39;,&#39;S&#39;,&#39;T&#39;,&#39;U&#39;,&#39;W&#39;,&#39;X&#39;,&#39;Y&#39;); public static boolean isValidTicker(String ticker) { if (ticker.length() != 4) return false; if (!Character.isDigit(ticker.charAt(0))) return false; if (!Character.isDigit(ticker.charAt(2))) return false; if (!allowed_char.contains(ticker.charAt(1)) &amp;&amp; !Character.isDigit(ticker.charAt(1))) return false; if (!allowed_char.contains(ticker.charAt(3)) &amp;&amp; !Character.isDigit(ticker.charAt(3))) return false; return true; } // Name rules: public static boolean isValidName(String name){ String trimmed = name.trim().replaceAll(&#34;^[\u3000\t]&#43;|[\u3000\t]&#43;$&#34;, &#34;&#34;); if (trimmed.isEmpty()) return false; return trimmed.matches(&#34;[a-zA-Z0-9 .()]&#43;&#34;); } // Market rules: public static final Set&lt;String&gt; allowed_market = Set.of(&#34;プライム&#34;, &#34;スタンダード&#34;, &#34;グロース&#34;, &#34;Prime&#34;, &#34;Standard&#34;, &#34;Growth&#34;, &#34;P&#34;, &#34;S&#34;, &#34;G&#34;); public static boolean isValidMarket(String market){ market = market.substring(0, 1).toUpperCase() &#43; market.substring(1); return (allowed_market.contains(market)); } // Shares rule: public static boolean isValidShares(long shares){ return shares &gt;= 0 &amp;&amp; shares &lt;= 999_999_999_999L; } } stockManager package trading_system; import java.io.BufferedReader; import java.io.BufferedWriter; import java.io.IOException; import java.nio.file.Files; import java.nio.file.Path; import java.nio.file.Paths; import java.util.ArrayList; import java.util.List; // to manage stock list public class stockManager { private final List&lt;stock&gt; stockList = new ArrayList&lt;&gt;(); public void loadFromCSV(String csvPath) throws IOException { stockList.clear(); try (BufferedReader reader = Files.newBufferedReader(Paths.get(csvPath))) { reader.readLine(); String line; while ((line = reader.readLine()) != null) { String[] parts = line.split(&#34;,&#34;); if (parts.length &lt; 4) continue; stockList.add( new stock(parts[0], parts[1], parts[2], Long.parseLong(parts[3])) ); } } } public void saveToCSV(String csvPath) throws IOException { try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(csvPath))) { writer.write(&#34;ticker,product_name,market,shares_issued\n&#34;); for (stock s : stockList) { writer.write(String.join(&#34;,&#34;, s.toArray())); writer.write(&#34;\n&#34;); } } } public void addStock(stock stock) { for (stock s : stockList) { if (s.getTicker().equals(stock.getTicker())) { System.err.println(stock.getTicker() &#43; &#34; already exists&#34;); return; } } stockList.add(stock); } public List&lt;stock&gt; getStockList() { return stockList; } } showStock package trading_system; import java.io.*; import java.util.*; public class showStock { public static void run() throws IOException { stockManager manager = new stockManager(); manager.loadFromCSV(&#34;data/company_list.csv&#34;); List&lt;stock&gt; stockList = manager.getStockList(); String[] header = {&#34;Ticker&#34;, &#34;Product Name&#34;, &#34;Market&#34;, &#34;Shares Issued&#34;}; // int columnsCount = header.length; int[] columnWidths = new int[columnsCount]; // formate stock list for (stock stock : stockList) { stock.setName(truncation(stock.getName(),28)); stock.setMarket(marketType(stock.getMarket())); } // calculate the max length of each column for (int i = 0; i &lt; columnsCount; i&#43;&#43;) { columnWidths[i] = header[i].length(); } for (stock stock : stockList) { columnWidths[0] = Math.max(stock.getTicker().length(), columnWidths[0]); columnWidths[1] = Math.max(stock.getName().length(), columnWidths[1]); columnWidths[2] = Math.max(stock.getMarket().length(), columnWidths[2]); columnWidths[3] = Math.max(String.format(&#34;%,d&#34;, stock.getShares()).length(), columnWidths[3]); } int colWidthSum = 0; for (int i = 0; i &lt; columnsCount; i&#43;&#43;) { colWidthSum &#43;= columnWidths[i]; } // print System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;)); System.out.println(formattedHeader(header, columnWidths)); System.out.println(headerDivider(columnWidths, &#34;-&#34;)); for (stock stock : stockList) { System.out.println(formattedRow(stock, columnWidths)); } System.out.println(divider(columnsCount, colWidthSum, &#34;=&#34;)); } public static void main(String[] args) throws IOException { run(); } // =============================================================== // market type public static String marketType(String arg) { arg = arg.substring(0, 1).toUpperCase() &#43; arg.substring(1); switch (arg) { case &#34;P&#34;: return &#34;Prime&#34;; case &#34;S&#34;: return &#34;Standard&#34;; case &#34;G&#34;: return &#34;Growth&#34;; default: return arg; } } // Truncation public static String truncation(String arg, int maxWidth) { if (arg.length() &lt;= maxWidth) return arg; return arg.substring(0, maxWidth-1).trim() &#43; &#34;...&#34;; } // format each row public static String formattedHeader (String[] header, int[] columnWidths) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); for (int i = 0; i &lt; header.length; i&#43;&#43;) { sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[i] &#43; &#34;s&#34;, header[i])).append(&#34; |&#34;); } return sb.toString(); } public static String formattedRow (stock s, int[] columnWidths) { StringBuilder sb = new StringBuilder(); // first col sb.append(&#34;|&#34;); sb.append(&#34; &#34;).append(s.getTicker()).append(&#34; |&#34;); //middle col sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[1] &#43; &#34;s&#34;, truncation(s.getName(),28))).append(&#34; |&#34;); sb.append(&#34; &#34;).append(String.format(&#34;%-&#34; &#43; columnWidths[2] &#43; &#34;s&#34;, s.getMarket())).append(&#34; |&#34;); //last col sb.append(&#34; &#34;).append(String.format(&#34;%&#34; &#43; columnWidths[3] &#43; &#34;s&#34;, String.format(&#34;%,d&#34;, s.getShares()))).append(&#34; |&#34;); return sb.toString(); } // seperator public static String divider (int columnsCount, int colWidthSum, String separator) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); for (int i = 0; i &lt; colWidthSum &#43; (columnsCount*3-1); i&#43;&#43;) { sb.append(separator); } sb.append(&#34;|&#34;); return sb.toString(); } public static String headerDivider (int[] columnWidths, String separator) { StringBuilder sb = new StringBuilder(); sb.append(&#34;|&#34;); sb.append(separator.repeat(columnWidths[0]&#43;2)); sb.append(&#34;&#43;&#34;); for (int i = 1; i &lt; columnWidths.length-1; i&#43;&#43;) { sb.append(separator.repeat(columnWidths[i]&#43;2)); sb.append(&#34;&#43;&#34;); } sb.append(separator.repeat(columnWidths[columnWidths.length-1]&#43;2)); sb.append(&#34;|&#34;); return sb.toString(); } } registerStock package trading_system; import java.io.IOException; import java.util.List; import java.util.Scanner; public class registerStock { public static void run() throws IOException { stockManager manager = new stockManager(); manager.loadFromCSV(&#34;data/company_list.csv&#34;); stock newStock = promptNewStock(manager.getStockList()); manager.addStock(newStock); manager.saveToCSV(&#34;data/company_list.csv&#34;); } public static void main(String[] args) throws IOException { run(); } public static stock promptNewStock(List&lt;stock&gt; existingStocks) throws IOException { Scanner sc = new Scanner(System.in); String name = null; String ticker = null; String market = null; long shares = 0; // 銘柄コード while (true) { System.out.print(&#34;銘柄コード&gt; &#34;); ticker = sc.nextLine().toUpperCase(); boolean isDuplicate = false; for (stock s : existingStocks) { if (s.getTicker().equals(ticker)) { System.out.println(&#34;この銘柄は既に登録されています。&#34;); isDuplicate = true; break; } } if (isDuplicate) continue; // jump to the beginning of while if (stock.isValidTicker(ticker)) break; // stop looping else System.out.println(&#34;銘柄コードが規則に従っていません。&#34;); } // 銘柄名 while (true) { System.out.print(&#34;銘柄名&gt; &#34;); name = sc.nextLine().trim(); if (stock.isValidName(name)) break; else System.out.println(&#34;銘柄名が規則に従っていません。&#34;); } // 上場市場 while (true) { System.out.print(&#34;上場市場&gt; &#34;); market = sc.next(); if (stock.isValidMarket(market)) break; else System.out.println(&#34;上場市場が規則に従っていません。&#34;); } // 発行済み株式数 while (true) { System.out.print(&#34;発行済み株式数&gt; &#34;); shares = sc.nextLong(); if (stock.isValidShares(shares)) break; else System.out.println(&#34;株式数が規則に従っていません。&#34;); } System.out.println(name &#43; &#34; を新規銘柄として登録しました。&#34;); return new stock(ticker, name, market, shares); } }">
 
       
     
@@ -123,7 +518,398 @@
     <div class="nested-copy-line-height lh-copy serif f4 nested-links mid-gray pr4-l w-two-thirds-l"><p>This is a small console-based Java application I wrote to manage a simple trading system.</p>
 <p>👉 View the GitHub repo: <a href="https://github.com/aaronLiu0011/trading-system">trading-system</a></p>
 <hr>
-<ul class="pa0">
+<h3 id="main">Main</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kn">package</span><span class="w"> </span><span class="nn">trading_system</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.io.IOException</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.Scanner</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">Main</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;株式取引管理システムを開始します。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">Scanner</span><span class="w"> </span><span class="n">sc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Scanner</span><span class="p">(</span><span class="n">System</span><span class="p">.</span><span class="na">in</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">while</span><span class="p">(</span><span class="kc">true</span><span class="p">){</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">ShowMenu</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">String</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sc</span><span class="p">.</span><span class="na">next</span><span class="p">().</span><span class="na">toUpperCase</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">switch</span><span class="p">(</span><span class="n">c</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s">&#34;A&#34;</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;銘柄マスタを表示します。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">showStock</span><span class="p">.</span><span class="na">run</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;---&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="k">continue</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s">&#34;B&#34;</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;新規株式銘柄マスタを登録します。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">registerStock</span><span class="p">.</span><span class="na">run</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;---&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="k">continue</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s">&#34;Q&#34;</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;アプリケーションを終了しました。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="k">return</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">default</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">printf</span><span class="p">(</span><span class="s">&#34;\&#34;%s\&#34; に対応するメニューは存在しません。%n&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;---&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">ShowMenu</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;操作するメニューを選んでください。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;    A: 銘柄マスター一覧表示&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;    B: 銘柄マスター新規登録&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;    Q: アプリケーションを終了する&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">print</span><span class="p">(</span><span class="s">&#34;入力してください：&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre></div><h3 id="stock">stock</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kn">package</span><span class="w"> </span><span class="nn">trading_system</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.Set</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c1">// for single stock</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">stock</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ticker</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">market</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">shares</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">stock</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="nf">stock</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">market</span><span class="p">,</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="n">shares</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ticker</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">name</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">market</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">market</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">shares</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">shares</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">getTicker</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ticker</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">getName</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">name</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">getMarket</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">market</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">long</span><span class="w"> </span><span class="nf">getShares</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">shares</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setTicker</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">ticker</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ticker</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setName</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">name</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setMarket</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">market</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">market</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">market</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setShares</span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="n">shares</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">this</span><span class="p">.</span><span class="na">shares</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">shares</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="nf">toArray</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">String</span><span class="o">[]</span><span class="p">{</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">market</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="na">valueOf</span><span class="p">(</span><span class="n">shares</span><span class="p">)};</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// Ticker rules:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">//   1. 4 chars</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">//   2. 1st and 3rd are digital</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">//   3. 2nd and 4th are digital or allowed char</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">Character</span><span class="o">&gt;</span><span class="w"> </span><span class="n">allowed_char</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="sc">&#39;A&#39;</span><span class="p">,</span><span class="sc">&#39;C&#39;</span><span class="p">,</span><span class="sc">&#39;D&#39;</span><span class="p">,</span><span class="sc">&#39;F&#39;</span><span class="p">,</span><span class="sc">&#39;G&#39;</span><span class="p">,</span><span class="sc">&#39;H&#39;</span><span class="p">,</span><span class="sc">&#39;J&#39;</span><span class="p">,</span><span class="sc">&#39;K&#39;</span><span class="p">,</span><span class="sc">&#39;L&#39;</span><span class="p">,</span><span class="sc">&#39;M&#39;</span><span class="p">,</span><span class="sc">&#39;N&#39;</span><span class="p">,</span><span class="sc">&#39;P&#39;</span><span class="p">,</span><span class="sc">&#39;R&#39;</span><span class="p">,</span><span class="sc">&#39;S&#39;</span><span class="p">,</span><span class="sc">&#39;T&#39;</span><span class="p">,</span><span class="sc">&#39;U&#39;</span><span class="p">,</span><span class="sc">&#39;W&#39;</span><span class="p">,</span><span class="sc">&#39;X&#39;</span><span class="p">,</span><span class="sc">&#39;Y&#39;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">isValidTicker</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">ticker</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">length</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">4</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">Character</span><span class="p">.</span><span class="na">isDigit</span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="n">0</span><span class="p">)))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">Character</span><span class="p">.</span><span class="na">isDigit</span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="n">2</span><span class="p">)))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">allowed_char</span><span class="p">.</span><span class="na">contains</span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="n">1</span><span class="p">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">Character</span><span class="p">.</span><span class="na">isDigit</span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="n">1</span><span class="p">)))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">allowed_char</span><span class="p">.</span><span class="na">contains</span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="n">3</span><span class="p">))</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">Character</span><span class="p">.</span><span class="na">isDigit</span><span class="p">(</span><span class="n">ticker</span><span class="p">.</span><span class="na">charAt</span><span class="p">(</span><span class="n">3</span><span class="p">)))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// Name rules:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">isValidName</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">){</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">trimmed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">name</span><span class="p">.</span><span class="na">trim</span><span class="p">().</span><span class="na">replaceAll</span><span class="p">(</span><span class="s">&#34;^[\u3000\t]+|[\u3000\t]+$&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">trimmed</span><span class="p">.</span><span class="na">isEmpty</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">trimmed</span><span class="p">.</span><span class="na">matches</span><span class="p">(</span><span class="s">&#34;[a-zA-Z0-9 .()]+&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// Market rules:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">allowed_market</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span><span class="s">&#34;プライム&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;スタンダード&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;グロース&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;Prime&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;Standard&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;Growth&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;P&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;S&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;G&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">isValidMarket</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">market</span><span class="p">){</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">market</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">market</span><span class="p">.</span><span class="na">substring</span><span class="p">(</span><span class="n">0</span><span class="p">,</span><span class="w"> </span><span class="n">1</span><span class="p">).</span><span class="na">toUpperCase</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">market</span><span class="p">.</span><span class="na">substring</span><span class="p">(</span><span class="n">1</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">allowed_market</span><span class="p">.</span><span class="na">contains</span><span class="p">(</span><span class="n">market</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// Shares rule:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">isValidShares</span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="n">shares</span><span class="p">){</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">shares</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">0</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">shares</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">999_999_999_999L</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre></div><h3 id="stockmanager">stockManager</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kn">package</span><span class="w"> </span><span class="nn">trading_system</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.io.BufferedReader</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.io.BufferedWriter</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.io.IOException</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.nio.file.Files</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.nio.file.Path</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.nio.file.Paths</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.ArrayList</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.List</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="c1">// to manage stock list</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">stockManager</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">stock</span><span class="o">&gt;</span><span class="w"> </span><span class="n">stockList</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;&gt;</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">loadFromCSV</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">csvPath</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">stockList</span><span class="p">.</span><span class="na">clear</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">(</span><span class="n">BufferedReader</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Files</span><span class="p">.</span><span class="na">newBufferedReader</span><span class="p">(</span><span class="n">Paths</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">csvPath</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">reader</span><span class="p">.</span><span class="na">readLine</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">String</span><span class="w"> </span><span class="n">line</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">while</span><span class="w"> </span><span class="p">((</span><span class="n">line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">reader</span><span class="p">.</span><span class="na">readLine</span><span class="p">())</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">line</span><span class="p">.</span><span class="na">split</span><span class="p">(</span><span class="s">&#34;,&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">parts</span><span class="p">.</span><span class="na">length</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">4</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="n">stockList</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                        </span><span class="k">new</span><span class="w"> </span><span class="n">stock</span><span class="p">(</span><span class="n">parts</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="p">,</span><span class="w"> </span><span class="n">parts</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="p">,</span><span class="w"> </span><span class="n">parts</span><span class="o">[</span><span class="n">2</span><span class="o">]</span><span class="p">,</span><span class="w"> </span><span class="n">Long</span><span class="p">.</span><span class="na">parseLong</span><span class="p">(</span><span class="n">parts</span><span class="o">[</span><span class="n">3</span><span class="o">]</span><span class="p">))</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">saveToCSV</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">csvPath</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">(</span><span class="n">BufferedWriter</span><span class="w"> </span><span class="n">writer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Files</span><span class="p">.</span><span class="na">newBufferedWriter</span><span class="p">(</span><span class="n">Paths</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">csvPath</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">writer</span><span class="p">.</span><span class="na">write</span><span class="p">(</span><span class="s">&#34;ticker,product_name,market,shares_issued\n&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">stockList</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="n">writer</span><span class="p">.</span><span class="na">write</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">join</span><span class="p">(</span><span class="s">&#34;,&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="na">toArray</span><span class="p">()));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="n">writer</span><span class="p">.</span><span class="na">write</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">addStock</span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">stock</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">stockList</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="na">getTicker</span><span class="p">().</span><span class="na">equals</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getTicker</span><span class="p">()))</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="n">System</span><span class="p">.</span><span class="na">err</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getTicker</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34; already exists&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">return</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">stockList</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">stock</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">stock</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">getStockList</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">stockList</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre></div><h3 id="showstock">showStock</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kn">package</span><span class="w"> </span><span class="nn">trading_system</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.io.*</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.*</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">showStock</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">run</span><span class="p">()</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">stockManager</span><span class="w"> </span><span class="n">manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">stockManager</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">manager</span><span class="p">.</span><span class="na">loadFromCSV</span><span class="p">(</span><span class="s">&#34;data/company_list.csv&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">stock</span><span class="o">&gt;</span><span class="w"> </span><span class="n">stockList</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">manager</span><span class="p">.</span><span class="na">getStockList</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">header</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s">&#34;Ticker&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;Product Name&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;Market&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;Shares Issued&#34;</span><span class="p">};</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">//</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">columnsCount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">header</span><span class="p">.</span><span class="na">length</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="kt">int</span><span class="o">[]</span><span class="w"> </span><span class="n">columnWidths</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">int</span><span class="o">[</span><span class="n">columnsCount</span><span class="o">]</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// formate stock list</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">stock</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">stockList</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">stock</span><span class="p">.</span><span class="na">setName</span><span class="p">(</span><span class="n">truncation</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getName</span><span class="p">(),</span><span class="n">28</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">stock</span><span class="p">.</span><span class="na">setMarket</span><span class="p">(</span><span class="n">marketType</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getMarket</span><span class="p">()));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// calculate the max length of each column</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">columnsCount</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">header</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">.</span><span class="na">length</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">stock</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">stockList</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Math</span><span class="p">.</span><span class="na">max</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getTicker</span><span class="p">().</span><span class="na">length</span><span class="p">(),</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">0</span><span class="o">]</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Math</span><span class="p">.</span><span class="na">max</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getName</span><span class="p">().</span><span class="na">length</span><span class="p">(),</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">2</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Math</span><span class="p">.</span><span class="na">max</span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">getMarket</span><span class="p">().</span><span class="na">length</span><span class="p">(),</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">2</span><span class="o">]</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">3</span><span class="o">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Math</span><span class="p">.</span><span class="na">max</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&#34;%,d&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">stock</span><span class="p">.</span><span class="na">getShares</span><span class="p">()).</span><span class="na">length</span><span class="p">(),</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">3</span><span class="o">]</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">colWidthSum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">0</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">columnsCount</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">colWidthSum</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// print</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">divider</span><span class="p">(</span><span class="n">columnsCount</span><span class="p">,</span><span class="w"> </span><span class="n">colWidthSum</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;=&#34;</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">formattedHeader</span><span class="p">(</span><span class="n">header</span><span class="p">,</span><span class="w"> </span><span class="n">columnWidths</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">headerDivider</span><span class="p">(</span><span class="n">columnWidths</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;-&#34;</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">stock</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">stockList</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">formattedRow</span><span class="p">(</span><span class="n">stock</span><span class="p">,</span><span class="w"> </span><span class="n">columnWidths</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">divider</span><span class="p">(</span><span class="n">columnsCount</span><span class="p">,</span><span class="w"> </span><span class="n">colWidthSum</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;=&#34;</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">run</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// ===============================================================</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// market type</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">marketType</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">arg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">arg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">arg</span><span class="p">.</span><span class="na">substring</span><span class="p">(</span><span class="n">0</span><span class="p">,</span><span class="w"> </span><span class="n">1</span><span class="p">).</span><span class="na">toUpperCase</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">arg</span><span class="p">.</span><span class="na">substring</span><span class="p">(</span><span class="n">1</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">arg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&#34;P&#34;</span><span class="p">:</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&#34;Prime&#34;</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&#34;S&#34;</span><span class="p">:</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&#34;Standard&#34;</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&#34;G&#34;</span><span class="p">:</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&#34;Growth&#34;</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">default</span><span class="p">:</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">arg</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// Truncation</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">truncation</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">arg</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">maxWidth</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">arg</span><span class="p">.</span><span class="na">length</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">maxWidth</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">arg</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">arg</span><span class="p">.</span><span class="na">substring</span><span class="p">(</span><span class="n">0</span><span class="p">,</span><span class="w"> </span><span class="n">maxWidth</span><span class="o">-</span><span class="n">1</span><span class="p">).</span><span class="na">trim</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34;...&#34;</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// format each row</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">formattedHeader</span><span class="w"> </span><span class="p">(</span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">header</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">[]</span><span class="w"> </span><span class="n">columnWidths</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">StringBuilder</span><span class="w"> </span><span class="n">sb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringBuilder</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;|&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">header</span><span class="p">.</span><span class="na">length</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; &#34;</span><span class="p">).</span><span class="na">append</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&#34;%-&#34;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34;s&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">header</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">)).</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; |&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">sb</span><span class="p">.</span><span class="na">toString</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">formattedRow</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">s</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="o">[]</span><span class="w"> </span><span class="n">columnWidths</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">StringBuilder</span><span class="w"> </span><span class="n">sb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringBuilder</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// first col</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;|&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;  &#34;</span><span class="p">).</span><span class="na">append</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="na">getTicker</span><span class="p">()).</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;  |&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">//middle col</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; &#34;</span><span class="p">).</span><span class="na">append</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&#34;%-&#34;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">1</span><span class="o">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34;s&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">truncation</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="na">getName</span><span class="p">(),</span><span class="n">28</span><span class="p">))).</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; |&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; &#34;</span><span class="p">).</span><span class="na">append</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&#34;%-&#34;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">2</span><span class="o">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34;s&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="na">getMarket</span><span class="p">())).</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; |&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">//last col</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; &#34;</span><span class="p">).</span><span class="na">append</span><span class="p">(</span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&#34;%&#34;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">columnWidths</span><span class="o">[</span><span class="n">3</span><span class="o">]</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34;s&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&#34;%,d&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="na">getShares</span><span class="p">()))).</span><span class="na">append</span><span class="p">(</span><span class="s">&#34; |&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">sb</span><span class="p">.</span><span class="na">toString</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// seperator</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">divider</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">columnsCount</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">colWidthSum</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">separator</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">StringBuilder</span><span class="w"> </span><span class="n">sb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringBuilder</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;|&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">colWidthSum</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">columnsCount</span><span class="o">*</span><span class="n">3</span><span class="o">-</span><span class="n">1</span><span class="p">);</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="n">separator</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;|&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">sb</span><span class="p">.</span><span class="na">toString</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">headerDivider</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="o">[]</span><span class="w"> </span><span class="n">columnWidths</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">separator</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">StringBuilder</span><span class="w"> </span><span class="n">sb</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">StringBuilder</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;|&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="n">separator</span><span class="p">.</span><span class="na">repeat</span><span class="p">(</span><span class="n">columnWidths</span><span class="o">[</span><span class="n">0</span><span class="o">]+</span><span class="n">2</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;+&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">1</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">columnWidths</span><span class="p">.</span><span class="na">length</span><span class="o">-</span><span class="n">1</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="n">separator</span><span class="p">.</span><span class="na">repeat</span><span class="p">(</span><span class="n">columnWidths</span><span class="o">[</span><span class="n">i</span><span class="o">]+</span><span class="n">2</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;+&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="n">separator</span><span class="p">.</span><span class="na">repeat</span><span class="p">(</span><span class="n">columnWidths</span><span class="o">[</span><span class="n">columnWidths</span><span class="p">.</span><span class="na">length</span><span class="o">-</span><span class="n">1</span><span class="o">]+</span><span class="n">2</span><span class="p">));</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">sb</span><span class="p">.</span><span class="na">append</span><span class="p">(</span><span class="s">&#34;|&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">sb</span><span class="p">.</span><span class="na">toString</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre></div><h3 id="registerstock">registerStock</h3>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="kn">package</span><span class="w"> </span><span class="nn">trading_system</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.io.IOException</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.List</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.Scanner</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">registerStock</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">run</span><span class="p">()</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">stockManager</span><span class="w"> </span><span class="n">manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">stockManager</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">manager</span><span class="p">.</span><span class="na">loadFromCSV</span><span class="p">(</span><span class="s">&#34;data/company_list.csv&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">stock</span><span class="w"> </span><span class="n">newStock</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">promptNewStock</span><span class="p">(</span><span class="n">manager</span><span class="p">.</span><span class="na">getStockList</span><span class="p">());</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">manager</span><span class="p">.</span><span class="na">addStock</span><span class="p">(</span><span class="n">newStock</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">manager</span><span class="p">.</span><span class="na">saveToCSV</span><span class="p">(</span><span class="s">&#34;data/company_list.csv&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">run</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">stock</span><span class="w"> </span><span class="nf">promptNewStock</span><span class="p">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">stock</span><span class="o">&gt;</span><span class="w"> </span><span class="n">existingStocks</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">IOException</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">Scanner</span><span class="w"> </span><span class="n">sc</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">Scanner</span><span class="p">(</span><span class="n">System</span><span class="p">.</span><span class="na">in</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">market</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="kt">long</span><span class="w"> </span><span class="n">shares</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">0</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// 銘柄コード</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">print</span><span class="p">(</span><span class="s">&#34;銘柄コード&gt; &#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">ticker</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sc</span><span class="p">.</span><span class="na">nextLine</span><span class="p">().</span><span class="na">toUpperCase</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="kt">boolean</span><span class="w"> </span><span class="n">isDuplicate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">existingStocks</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="na">getTicker</span><span class="p">().</span><span class="na">equals</span><span class="p">(</span><span class="n">ticker</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;この銘柄は既に登録されています。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="n">isDuplicate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="k">break</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">isDuplicate</span><span class="p">)</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span><span class="w"> </span><span class="c1">// jump to the beginning of while</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">isValidTicker</span><span class="p">(</span><span class="n">ticker</span><span class="p">))</span><span class="w"> </span><span class="k">break</span><span class="p">;</span><span class="w"> </span><span class="c1">// stop looping</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">else</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;銘柄コードが規則に従っていません。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// 銘柄名</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">print</span><span class="p">(</span><span class="s">&#34;銘柄名&gt; &#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sc</span><span class="p">.</span><span class="na">nextLine</span><span class="p">().</span><span class="na">trim</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">isValidName</span><span class="p">(</span><span class="n">name</span><span class="p">))</span><span class="w"> </span><span class="k">break</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">else</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;銘柄名が規則に従っていません。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// 上場市場</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">print</span><span class="p">(</span><span class="s">&#34;上場市場&gt; &#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">market</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sc</span><span class="p">.</span><span class="na">next</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">isValidMarket</span><span class="p">(</span><span class="n">market</span><span class="p">))</span><span class="w"> </span><span class="k">break</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">else</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;上場市場が規則に従っていません。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="c1">// 発行済み株式数</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">print</span><span class="p">(</span><span class="s">&#34;発行済み株式数&gt; &#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="n">shares</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sc</span><span class="p">.</span><span class="na">nextLong</span><span class="p">();</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">stock</span><span class="p">.</span><span class="na">isValidShares</span><span class="p">(</span><span class="n">shares</span><span class="p">))</span><span class="w"> </span><span class="k">break</span><span class="p">;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">else</span><span class="w"> </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="s">&#34;株式数が規則に従っていません。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="n">System</span><span class="p">.</span><span class="na">out</span><span class="p">.</span><span class="na">println</span><span class="p">(</span><span class="n">name</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&#34; を新規銘柄として登録しました。&#34;</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">stock</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">market</span><span class="p">,</span><span class="w"> </span><span class="n">shares</span><span class="p">);</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w"></span><span class="p">}</span><span class="w">
+</span></span></span></code></pre></div><ul class="pa0">
   
    <li class="list di">
      <a href="/tags/java/" class="link f5 grow br-pill ba ph3 pv2 mb2 dib black sans-serif no-underline">Java</a>
@@ -144,7 +930,22 @@
       </div>
     </div>
 
-    <aside class="w-30-l mt6-l">
+    <aside class="w-30-l mt6-l"><div class="bg-light-gray pa3 nested-list-reset nested-copy-line-height nested-links">
+    <p class="f5 b mb3">What&#39;s in this posts</p>
+      <nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#main">Main</a></li>
+        <li><a href="#stock">stock</a></li>
+        <li><a href="#stockmanager">stockManager</a></li>
+        <li><a href="#showstock">showStock</a></li>
+        <li><a href="#registerstock">registerStock</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+  </div>
 
 
 
