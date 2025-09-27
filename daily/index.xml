@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Aaron LIU&#39;s Blog</title>
-    <link>https://aaronliu0011.github.io/</link>
-    <description>Recent content on Aaron LIU&#39;s Blog</description>
+    <title>Dailies on Aaron LIU&#39;s Blog</title>
+    <link>https://aaronliu0011.github.io/daily/</link>
+    <description>Recent content in Dailies on Aaron LIU&#39;s Blog</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Sat, 27 Sep 2025 21:00:00 +0900</lastBuildDate>
-    <atom:link href="https://aaronliu0011.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://aaronliu0011.github.io/daily/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Daily Log 2025-09-27</title>
       <link>https://aaronliu0011.github.io/daily/2025-09-27/</link>
